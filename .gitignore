@@ -21,3 +21,9 @@ desktop.ini
 MeowTimer.Mac/publish/
 MeowTimer.Mac/build/
 build/
+
+# 临时验证目录
+.verify*/
+.verify*/
+.pos*/
+.t[0-9]*/
