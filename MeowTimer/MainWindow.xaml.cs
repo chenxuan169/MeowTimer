@@ -935,15 +935,40 @@ public partial class MainWindow : Window
             _pressed = false;
             if (IsMouseCaptured) ReleaseMouseCapture();
 
-            if (_cfg.LockPosition) return;   // 锁定了就不让拖
+            if (_cfg.LockPosition)
+            {
+                // 位置锁着的时候拖不动，得让用户知道原因，不然会以为程序记不住位置
+                ShowLockHint();
+                return;
+            }
 
             try { DragMove(); } catch { }
             SavePosition();
         }
     }
 
-    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+    private DispatcherTimer? _hintTimer;
+
+    /// <summary>锁定位置时拖动，短暂提示一句，避免用户以为程序记不住位置。</summary>
+    private void ShowLockHint()
     {
+        if (_hintTimer != null) _hintTimer.Stop();
+
+        StatusText.Visibility = Visibility.Visible;
+        StatusText.Text = L.T("hint.locked");
+        StatusText.Foreground = new SolidColorBrush(ThemeService.C("#FFB020"));
+
+        _hintTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.8) };
+        _hintTimer.Tick += (_, _) =>
+        {
+            _hintTimer?.Stop();
+            ApplyTheme();
+            Refresh();
+        };
+        _hintTimer.Start();
+    }
+
+    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)    {
         base.OnMouseLeftButtonUp(e);
         if (IsMouseCaptured) ReleaseMouseCapture();
 

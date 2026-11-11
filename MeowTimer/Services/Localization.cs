@@ -39,6 +39,7 @@ public static class L
         ["status.ready"] = ("点一下开始", "Tap to start"),
         ["status.done"] = ("时间到啦", "Time's up"),
         ["status.pomodoroCount"] = ("第 {0} 个番茄", "Pomodoro #{0}"),
+        ["hint.locked"] = ("位置已锁定 · 右键可解锁", "Position locked · right-click to unlock"),
         ["status.break"] = ("休息中", "On a break"),
         ["status.cycleRound"] = ("第 {0} 轮", "Round {0}"),
         ["status.idle"] = ("已重置", "Reset"),
