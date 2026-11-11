@@ -759,9 +759,11 @@ public partial class SettingsWindow : Window
         PreviewShadow.Color = t.From;
         PreviewShadow.Opacity = noBg ? 0 : 0.3;
 
-        PreviewTime.Foreground = new SolidColorBrush(string.IsNullOrWhiteSpace(_work.TextColor)
+        var previewTextColor = string.IsNullOrWhiteSpace(_work.TextColor)
             ? (noBg ? t.From : t.Text)
-            : ThemeService.C(_work.TextColor));
+            : ThemeService.C(_work.TextColor);
+
+        PreviewTime.Foreground = new SolidColorBrush(previewTextColor);
         PreviewTime.FontFamily = SafeFont(_work.FontFamily);
         PreviewTime.FontSize = Math.Clamp(_work.FontSize * 0.44, 9, 46);
 
@@ -788,15 +790,15 @@ public partial class SettingsWindow : Window
                 ShadowDepth = 0,
                 Opacity = 0.85
             };
-            PreviewBar.Background = new SolidColorBrush(ThemeService.WithAlpha(Colors.Black, 45));
-            PreviewBarFill.Background = new SolidColorBrush(t.From);
         }
         else
         {
             PreviewTime.Effect = null;
-            PreviewBar.Background = new SolidColorBrush(ThemeService.WithAlpha(t.Text, 58));
-            PreviewBarFill.Background = new SolidColorBrush(ThemeService.WithAlpha(t.Text, 235));
         }
+
+        // 进度条跟随字体颜色
+        PreviewBarFill.Background = new SolidColorBrush(ThemeService.WithAlpha(previewTextColor, 240));
+        PreviewBar.Background = new SolidColorBrush(ThemeService.WithAlpha(previewTextColor, 60));
     }
 
     private void UpdateThemePreview()

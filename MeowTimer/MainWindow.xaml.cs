@@ -198,9 +198,6 @@ public partial class MainWindow : Window
                 ShadowDepth = 0,
                 Opacity = 0.9
             };
-
-            ProgressFill.Background = new SolidColorBrush(t.From);
-            ProgressBg.Background = new SolidColorBrush(ThemeService.WithAlpha(Colors.Black, 45));
         }
         else
         {
@@ -219,10 +216,12 @@ public partial class MainWindow : Window
 
             EditFrame.Stroke = Brushes.White;
             EditFrame.Effect = null;
-
-            ProgressFill.Background = new SolidColorBrush(ThemeService.WithAlpha(t.Text, 235));
-            ProgressBg.Background = new SolidColorBrush(ThemeService.WithAlpha(t.Text, 58));
         }
+
+        // 进度条跟着字体颜色走，不跟主题
+        ProgressFill.Background = new SolidColorBrush(ThemeService.WithAlpha(textColor, 240));
+        ProgressBg.Background = new SolidColorBrush(
+            ThemeService.WithAlpha(noBg ? outline : textColor, noBg ? (byte)45 : (byte)60));
 
         StatusText.Foreground = _editMode || noBg
             ? new SolidColorBrush(textColor)
