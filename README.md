@@ -1,5 +1,10 @@
 # 喵时 MeowTimer 🐱
 
+![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows)
+![.NET](https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet)
+![License](https://img.shields.io/badge/license-MIT-3DA639)
+![Size](https://img.shields.io/badge/size-380%20KB-FF8FB1)
+
 一个很轻的 Windows 桌面倒计时 / 番茄钟。没有窗口边框，可以拖到屏幕任意角落，平时就安安静静趴着显示时间。
 
 双击不用找图标，点击数字就能开始。
@@ -53,9 +58,9 @@
 
 ## 下载
 
-不需要安装 .NET 运行时也能跑（框架依赖版需要 .NET 8 Desktop Runtime）。
+**[⬇ 下载 MeowTimer.exe](https://github.com/chenxuan169/MeowTimer/releases/latest/download/MeowTimer.exe)** — 约 380 KB，双击就能用
 
-直接下：[`dist/MeowTimer.exe`](dist/MeowTimer.exe)（约 380 KB）
+需要 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)（大多数电脑已经装了）。
 
 详细说明见 [使用说明.md](dist/使用说明.md)。
 
