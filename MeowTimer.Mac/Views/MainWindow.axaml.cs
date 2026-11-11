@@ -117,14 +117,23 @@ public partial class MainWindow : Window
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
         if (screen == null) return;
 
-        double left = double.IsNaN(App.Config.WindowLeft)
-            ? screen.WorkingArea.Right - Width - 40
-            : App.Config.WindowLeft;
-        double top = double.IsNaN(App.Config.WindowTop)
-            ? screen.WorkingArea.Y + 40
-            : App.Config.WindowTop;
+        var area = screen.WorkingArea;
+        bool known = !double.IsNaN(App.Config.WindowLeft) && !double.IsNaN(App.Config.WindowTop);
 
-        Position = new PixelPoint((int)Math.Max(0, left), (int)Math.Max(0, top));
+        double left = known ? App.Config.WindowLeft : area.Right - Width - 40;
+        double top = known ? App.Config.WindowTop : area.Y + 40;
+
+        // 只有左上角真的不在任何一块屏幕里（换过显示器 / 改过分辨率）才回默认位置
+        bool onScreen = Screens.All.Any(s =>
+            s.Bounds.Contains(new PixelPoint((int)left + 24, (int)top + 24)));
+
+        if (!onScreen)
+        {
+            left = area.Right - Width - 40;
+            top = area.Y + 40;
+        }
+
+        Position = new PixelPoint((int)Math.Round(left), (int)Math.Round(top));
     }
 
     // ==================== 计时 ====================

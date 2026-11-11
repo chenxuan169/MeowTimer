@@ -269,23 +269,22 @@ public partial class MainWindow : Window
         var wa = ActiveWorkArea(this);
         var vs = VirtualScreenRect();
 
-        double w = ActualWidth > 10 ? ActualWidth : 300;
-        double h = ActualHeight > 10 ? ActualHeight : 160;
+        double fallbackW = ActualWidth > 10 ? ActualWidth : 300;
 
-        double left = double.IsNaN(_cfg.WindowLeft) ? wa.Right - w - 40 : _cfg.WindowLeft;
+        double left = double.IsNaN(_cfg.WindowLeft) ? wa.Right - fallbackW - 40 : _cfg.WindowLeft;
         double top = double.IsNaN(_cfg.WindowTop) ? wa.Top + 60 : _cfg.WindowTop;
 
-        // 记住的位置要是一大半都在屏幕外（换过显示器 / 改过分辨率），就挪回当前屏幕
-        var rect = new Rect(left, top, w, h);
-        if (IntersectArea(rect, vs) < rect.Width * rect.Height * 0.5)
+        // 只有左上角真的不在任何屏幕里（换过显示器 / 改过分辨率）才挪回默认位置
+        if (!vs.Contains(new Point(left + 24, top + 24)))
         {
-            left = wa.Right - w - 40;
+            left = wa.Right - fallbackW - 40;
             top = wa.Top + 60;
         }
 
-        // 再夹一次，保证至少贴着当前屏幕边缘
-        left = Math.Clamp(left, vs.Left, Math.Max(vs.Left, vs.Right - w));
-        top = Math.Clamp(top, vs.Top, Math.Max(vs.Top, vs.Bottom - h));
+        // 宽松夹取：允许窗口贴着甚至略微超出屏幕边缘，只要还能抓得到就行
+        // （不能用窗口宽度去算右边界，字号刚改过时 ActualWidth 还是旧值，会把窗口挤走）
+        left = Math.Clamp(left, vs.Left - 60, Math.Max(vs.Left - 60, vs.Right - 80));
+        top = Math.Clamp(top, vs.Top - 10, Math.Max(vs.Top - 10, vs.Bottom - 60));
 
         _suppressPosSave = true;
         Left = left;
@@ -825,6 +824,8 @@ public partial class MainWindow : Window
             Hide();
             return;
         }
+
+        SavePositionNow();   // 退出前最后记一次位置，防止拖完马上就关
         base.OnClosing(e);
     }
 
