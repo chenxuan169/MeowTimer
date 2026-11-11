@@ -5,6 +5,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using MeowTimer.Models;
 using MeowTimer.Services;
+using MeowTimerMac.Services;
 using MeowTimerMac.Views;
 
 namespace MeowTimerMac;
@@ -24,11 +25,17 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = MainWin;
-            // 关掉窗口不等于退出，托盘还在（macOS 习惯）
-            desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnMainWindowClose;
+            // 关窗口只是收进托盘，真正退出走菜单里的「退出喵时」
+            desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
         }
 
         base.OnFrameworkInitializationCompleted();
+
+        TrayService.Init(
+            MainWin,
+            toggleTimer: () => MainWin?.Toggle(),
+            reset: () => MainWin?.Reset(),
+            quit: () => MainWin?.Quit());
 
         HandleScreenshotMode();
     }

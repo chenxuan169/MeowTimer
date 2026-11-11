@@ -6,21 +6,30 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using MeowTimer.Models;
 using MeowTimer.Services;
+using MeowTimerMac.Services;
 
 namespace MeowTimerMac.Views;
 
 public partial class MainWindow : Window
 {
-    private enum Phase { Idle, Running, Paused, Done }
+    private enum Phase { Idle, Running, Paused }
 
     private readonly DispatcherTimer _ticker;
     private Phase _phase = Phase.Idle;
+    private TimerMode _mode = TimerMode.Countdown;
+
     private int _total;
     private int _remain;
     private DateTime _lastTick;
+
     private Point _pressPoint;
     private bool _pressed;
     private PointerPressedEventArgs? _pressArgs;
+
+    private PomodoroPhase _pomoPhase = PomodoroPhase.Work;
+    private CyclePhase _cyclePhase = CyclePhase.Focus;
+    private int _pomoDone;
+    private int _cycleRound;
 
     public MainWindow()
     {
@@ -44,9 +53,21 @@ public partial class MainWindow : Window
         AddHandler(PointerReleasedEvent, OnReleased, RoutingStrategies.Tunnel);
         PointerWheelChanged += OnWheel;
 
+        Closing += (_, e) =>
+        {
+            // 关窗口只是收起来，托盘还在
+            if (!_quitting)
+            {
+                e.Cancel = true;
+                Hide();
+            }
+        };
+
         SizeChanged += (_, _) => UpdateProgressBar();
         UpdateContextMenu();
     }
+
+    private bool _quitting;
 
     // ==================== 外观 ====================
 
@@ -58,12 +79,14 @@ public partial class MainWindow : Window
         bool noBg = cfg.BackgroundStyle == "none" || cfg.CardOpacity <= 0.001;
 
         Card.Background = ThemeService.BuildBackground(cfg, t);
-        Card.BoxShadow = noBg ? default : new BoxShadows(new BoxShadow
-        {
-            Blur = 24,
-            OffsetY = 7,
-            Color = ThemeService.WithAlpha(t.Shadow, 56)
-        });
+        Card.BoxShadow = noBg
+            ? default
+            : new BoxShadows(new BoxShadow
+            {
+                Blur = 24,
+                OffsetY = 7,
+                Color = ThemeService.WithAlpha(t.Shadow, 56)
+            });
 
         var textColor = ThemeService.Parse(cfg.TextColor, noBg ? t.From : t.Text);
 
@@ -94,8 +117,12 @@ public partial class MainWindow : Window
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
         if (screen == null) return;
 
-        double left = double.IsNaN(App.Config.WindowLeft) ? screen.WorkingArea.Right - Width - 40 : App.Config.WindowLeft;
-        double top = double.IsNaN(App.Config.WindowTop) ? screen.WorkingArea.Y + 40 : App.Config.WindowTop;
+        double left = double.IsNaN(App.Config.WindowLeft)
+            ? screen.WorkingArea.Right - Width - 40
+            : App.Config.WindowLeft;
+        double top = double.IsNaN(App.Config.WindowTop)
+            ? screen.WorkingArea.Y + 40
+            : App.Config.WindowTop;
 
         Position = new PixelPoint((int)Math.Max(0, left), (int)Math.Max(0, top));
     }
@@ -116,25 +143,19 @@ public partial class MainWindow : Window
         {
             _remain = 0;
             _ticker.Stop();
-            _phase = Phase.Done;
-
-            if (App.Config.SoundEnabled)
-                SoundService.Play(App.Config.SoundFinish, App.Config.SoundVolume);
-
-            Refresh();
+            HandleFinish();
             return;
         }
 
         Refresh();
     }
 
-    private void Toggle()
+    public void Toggle()
     {
         switch (_phase)
         {
             case Phase.Idle:
-            case Phase.Done:
-                if (_phase == Phase.Done) _remain = _total;
+                if (_remain <= 0) _remain = _total;
                 _phase = Phase.Running;
                 _lastTick = DateTime.Now;
                 _ticker.Start();
@@ -155,49 +176,235 @@ public partial class MainWindow : Window
         Refresh();
     }
 
+    private void HandleFinish()
+    {
+        var cfg = App.Config;
+
+        switch (_mode)
+        {
+            case TimerMode.Pomodoro:
+            {
+                bool isWork = _pomoPhase == PomodoroPhase.Work;
+
+                if (isWork)
+                {
+                    _pomoDone++;
+                    if (cfg.SoundEnabled) SoundService.Play(cfg.SoundFinish, cfg.SoundVolume);
+                    bool longBreak = _pomoDone % Math.Max(1, cfg.PomodoroRoundsBeforeLong) == 0;
+                    BeginPhase(longBreak ? PomodoroPhase.LongBreak : PomodoroPhase.ShortBreak, cfg.PomodoroAutoNext);
+                }
+                else
+                {
+                    if (cfg.SoundEnabled) SoundService.Play(cfg.SoundBreakEnd, cfg.SoundVolume);
+                    BeginPhase(PomodoroPhase.Work, cfg.PomodoroAutoNext);
+                }
+                break;
+            }
+
+            case TimerMode.Cycle:
+            {
+                if (_cyclePhase == CyclePhase.Focus)
+                {
+                    _cycleRound++;
+                    if (cfg.SoundEnabled) SoundService.Play(cfg.SoundFinish, cfg.SoundVolume);
+                    BeginCyclePhase(CyclePhase.Break, cfg.CycleAutoNext);
+                }
+                else
+                {
+                    if (cfg.SoundEnabled) SoundService.Play(cfg.SoundBreakEnd, cfg.SoundVolume);
+
+                    if (cfg.CycleRounds > 0 && _cycleRound >= cfg.CycleRounds)
+                    {
+                        _phase = Phase.Idle;
+                        _cycleRound = 0;
+                        _cyclePhase = CyclePhase.Focus;
+                        _total = Math.Max(1, cfg.CycleFocusSeconds);
+                        _remain = _total;
+                    }
+                    else
+                    {
+                        BeginCyclePhase(CyclePhase.Focus, cfg.CycleAutoNext);
+                    }
+                }
+                break;
+            }
+
+            default:
+            {
+                if (cfg.SoundEnabled) SoundService.Play(cfg.SoundFinish, cfg.SoundVolume);
+                _phase = Phase.Idle;
+                break;
+            }
+        }
+
+        Refresh();
+    }
+
+    private void BeginPhase(PomodoroPhase phase, bool autoStart)
+    {
+        _pomoPhase = phase;
+        _total = Math.Max(1, phase switch
+        {
+            PomodoroPhase.Work => App.Config.PomodoroWorkSeconds,
+            PomodoroPhase.ShortBreak => App.Config.PomodoroShortBreakSeconds,
+            _ => App.Config.PomodoroLongBreakSeconds
+        });
+        _remain = _total;
+
+        _phase = autoStart ? Phase.Running : Phase.Idle;
+        if (autoStart) _lastTick = DateTime.Now;
+
+        Refresh();
+    }
+
+    private void BeginCyclePhase(CyclePhase phase, bool autoStart)
+    {
+        _cyclePhase = phase;
+        _total = Math.Max(1, phase == CyclePhase.Focus
+            ? App.Config.CycleFocusSeconds
+            : App.Config.CycleBreakSeconds);
+        _remain = _total;
+
+        _phase = autoStart ? Phase.Running : Phase.Idle;
+        if (autoStart) _lastTick = DateTime.Now;
+
+        Refresh();
+    }
+
     public void Reset()
     {
         _ticker.Stop();
         _phase = Phase.Idle;
+
+        switch (_mode)
+        {
+            case TimerMode.Pomodoro:
+                _pomoDone = 0;
+                BeginPhase(PomodoroPhase.Work, autoStart: false);
+                return;
+            case TimerMode.Cycle:
+                _cycleRound = 0;
+                BeginCyclePhase(CyclePhase.Focus, autoStart: false);
+                return;
+        }
+
         _total = Math.Max(1, App.Config.DefaultSeconds);
         _remain = _total;
         Refresh();
+    }
+
+    private void SetMode(TimerMode mode)
+    {
+        if (_mode == mode) return;
+
+        _mode = mode;
+        _ticker.Stop();
+        _phase = Phase.Idle;
+
+        switch (mode)
+        {
+            case TimerMode.Pomodoro:
+                _pomoDone = 0;
+                BeginPhase(PomodoroPhase.Work, autoStart: false);
+                break;
+            case TimerMode.Cycle:
+                _cycleRound = 0;
+                BeginCyclePhase(CyclePhase.Focus, autoStart: false);
+                break;
+            default:
+                _total = Math.Max(1, App.Config.DefaultSeconds);
+                _remain = _total;
+                Refresh();
+                break;
+        }
+
+        UpdateContextMenu();
     }
 
     private void SetTotal(int seconds)
     {
         _ticker.Stop();
         _phase = Phase.Idle;
+        _mode = TimerMode.Countdown;
         _total = Math.Max(1, seconds);
         _remain = _total;
+        UpdateContextMenu();
         Refresh();
     }
 
-    private void Adjust(int deltaSeconds)
+    private void Adjust(int delta)
     {
         if (_phase == Phase.Running) return;
 
-        _total = Math.Max(1, _total + deltaSeconds);
+        _total = Math.Max(1, _total + delta);
         _remain = _total;
         _phase = Phase.Idle;
         Refresh();
     }
 
-    // ==================== 刷新界面 ====================
+    // ==================== 刷新 ====================
 
     private void Refresh()
     {
         TimeText.Text = Format(_remain);
-
-        StatusText.Text = _phase switch
-        {
-            Phase.Running => "专注中 · 点一下暂停",
-            Phase.Paused => "已暂停 · 点一下继续",
-            Phase.Done => "时间到啦 🎉",
-            _ => "点一下开始"
-        };
-
+        StatusText.Text = StatusLine();
         UpdateProgressBar();
+        UpdateTooltip();
+    }
+
+    private void UpdateTooltip()
+    {
+        if (_phase == Phase.Idle) return;
+        TrayService.UpdateToolTip($"{StatusLine()} · {Format(_remain)}");
+    }
+
+    private string StatusLine()
+    {
+        string idle = "点一下开始";
+        string running = "专注中 · 点一下暂停";
+        string paused = "已暂停 · 点一下继续";
+
+        switch (_mode)
+        {
+            case TimerMode.Pomodoro:
+            {
+                string name = _pomoPhase switch
+                {
+                    PomodoroPhase.Work => $"专注 #{_pomoDone + 1}",
+                    PomodoroPhase.ShortBreak => "短休息",
+                    _ => "长休息"
+                };
+
+                return _phase switch
+                {
+                    Phase.Running => $"{name} · 点一下暂停",
+                    Phase.Paused => $"{name} · 已暂停",
+                    _ => $"{name} · {idle}"
+                };
+            }
+
+            case TimerMode.Cycle:
+            {
+                string name = _cyclePhase == CyclePhase.Focus
+                    ? $"专注 第 {_cycleRound + 1} 轮"
+                    : "休息";
+
+                return _phase switch
+                {
+                    Phase.Running => $"{name} · 点一下暂停",
+                    Phase.Paused => $"{name} · 已暂停",
+                    _ => $"{name} · {idle}"
+                };
+            }
+
+            default:
+                return _phase switch
+                {
+                    Phase.Running => running,
+                    Phase.Paused => paused,
+                    _ => idle
+                };
+        }
     }
 
     private void UpdateProgressBar()
@@ -270,28 +477,32 @@ public partial class MainWindow : Window
 
     private void OnWheel(object? sender, PointerWheelEventArgs e)
     {
-        if (!IsPositionLocked())
-        {
-            Adjust(e.Delta.Y > 0 ? 60 : -60);
-            e.Handled = true;
-        }
-    }
+        if (App.Config.LockPosition) return;
+        if (_mode != TimerMode.Countdown) return;
 
-    private bool IsPositionLocked() => App.Config.LockPosition;
+        Adjust(e.Delta.Y > 0 ? 60 : -60);
+        e.Handled = true;
+    }
 
     // ==================== 右键菜单 ====================
 
     private void UpdateContextMenu()
     {
         var cfg = App.Config;
-
         var menu = new ContextMenu();
 
         menu.Items.Add(Item(_phase == Phase.Running ? "暂停" : "开始", (_, _) => Toggle()));
         menu.Items.Add(Item("重置", (_, _) => Reset()));
         menu.Items.Add(new Separator());
+
+        menu.Items.Add(Item((_mode == TimerMode.Countdown ? "✓ " : "   ") + "倒计时", (_, _) => SetMode(TimerMode.Countdown)));
+        menu.Items.Add(Item((_mode == TimerMode.Pomodoro ? "✓ " : "   ") + "番茄钟", (_, _) => SetMode(TimerMode.Pomodoro)));
+        menu.Items.Add(Item((_mode == TimerMode.Cycle ? "✓ " : "   ") + "专注 · 休息", (_, _) => SetMode(TimerMode.Cycle)));
+
+        menu.Items.Add(new Separator());
         menu.Items.Add(Item("设置倒计时…", (_, _) => OpenSetTimer()));
         menu.Items.Add(Item("设置…", (_, _) => OpenSettings()));
+
         menu.Items.Add(new Separator());
         menu.Items.Add(Item((cfg.Topmost ? "✓ " : "   ") + "窗口置顶", (_, _) =>
         {
@@ -306,7 +517,9 @@ public partial class MainWindow : Window
             App.Save();
             UpdateContextMenu();
         }));
+
         menu.Items.Add(new Separator());
+        menu.Items.Add(Item("隐藏到托盘", (_, _) => Hide()));
         menu.Items.Add(Item("退出喵时", (_, _) => Quit()));
 
         ContextMenu = menu;
@@ -322,8 +535,7 @@ public partial class MainWindow : Window
     private async void OpenSetTimer()
     {
         var dlg = new SetTimerWindow(_total);
-        var ok = await dlg.ShowDialog<bool>(this);
-        if (ok) SetTotal(dlg.Seconds);
+        if (await dlg.ShowDialog<bool>(this)) SetTotal(dlg.Seconds);
     }
 
     private async void OpenSettings()
@@ -334,13 +546,16 @@ public partial class MainWindow : Window
         Refresh();
     }
 
-    private void Quit()
+    public void Quit()
     {
+        _quitting = true;
+
         App.Config.WindowLeft = Position.X;
         App.Config.WindowTop = Position.Y;
         App.Save();
 
-        if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        if (Application.Current?.ApplicationLifetime
+            is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
             desktop.Shutdown();
     }
 }
