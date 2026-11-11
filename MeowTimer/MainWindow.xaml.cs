@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
@@ -37,6 +38,7 @@ public partial class MainWindow : Window
     private Point _dragStart;
     private bool _pressed;
     private bool _dragging;
+    private DateTime _ignoreSaveUntil = DateTime.MinValue;
 
     public event Action<string, string>? NotifyRequested;
     public event Action? TimerStateChanged;
@@ -53,6 +55,17 @@ public partial class MainWindow : Window
     {
         _cfg = cfg;
         InitializeComponent();
+
+        // 窗口显示之前先把位置定好，否则会先闪一下默认位置再跳过来
+        if (!double.IsNaN(cfg.WindowLeft) && !double.IsNaN(cfg.WindowTop))
+        {
+            _suppressPosSave = true;
+            Left = cfg.WindowLeft;
+            Top = cfg.WindowTop;
+            _suppressPosSave = false;
+
+            Log.Write($"ctor: 预设位置 ({cfg.WindowLeft},{cfg.WindowTop})");
+        }
 
         _tick = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(100) };
         _tick.Tick += (_, _) => Refresh();
@@ -77,6 +90,8 @@ public partial class MainWindow : Window
         if (_ready) return;
         _ready = true;
 
+        Log.Write("---- 启动 ----");
+        _ignoreSaveUntil = DateTime.Now.AddMilliseconds(1200);
         ApplyConfig();
         ApplyTheme();
         RestorePosition();
@@ -274,11 +289,14 @@ public partial class MainWindow : Window
         double left = double.IsNaN(_cfg.WindowLeft) ? wa.Right - fallbackW - 40 : _cfg.WindowLeft;
         double top = double.IsNaN(_cfg.WindowTop) ? wa.Top + 60 : _cfg.WindowTop;
 
+        Log.Write($"restore: cfg=({_cfg.WindowLeft},{_cfg.WindowTop}) calc=({left},{top}) actual={ActualWidth:F0}x{ActualHeight:F0} vs={vs}");
+
         // 只有左上角真的不在任何屏幕里（换过显示器 / 改过分辨率）才挪回默认位置
         if (!vs.Contains(new Point(left + 24, top + 24)))
         {
             left = wa.Right - fallbackW - 40;
             top = wa.Top + 60;
+            Log.Write($"restore: 超出屏幕，改用默认 ({left},{top})");
         }
 
         // 宽松夹取：允许窗口贴着甚至略微超出屏幕边缘，只要还能抓得到就行
@@ -295,6 +313,27 @@ public partial class MainWindow : Window
         // 下次启动就还能回到同一个位置
         _cfg.WindowLeft = left;
         _cfg.WindowTop = top;
+
+        Log.Write($"restore: 已设窗口位置 ({left},{top}) 实际 Left={Left} Top={Top}");
+
+        // SizeToContent 会在布局完成后偷偷挪窗口，所以布局稳定后用 Win32 再钉一次
+        double targetLeft = left;
+        double targetTop = top;
+
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            ForcePosition(targetLeft, targetTop, "布局完成");
+
+            // SizeToContent 的二次测量可能更晚，再兜一次
+            var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+            t.Tick += (_, _) =>
+            {
+                t.Stop();
+                ForcePosition(targetLeft, targetTop, "450ms");
+                _ignoreSaveUntil = DateTime.Now.AddMilliseconds(250);
+            };
+            t.Start();
+        }), DispatcherPriority.Loaded);
 
         if (double.IsNaN(_cfg.WindowLeft) == false)
             App.SaveConfig();
@@ -320,14 +359,55 @@ public partial class MainWindow : Window
 
     private void SavePositionNow()
     {
-        if (double.IsNaN(Left) || double.IsNaN(Top)) return;
-        _cfg.WindowLeft = Left;
-        _cfg.WindowTop = Top;
+        var (left, top) = CurrentPosition();
+        if (double.IsNaN(left) || double.IsNaN(top)) return;
+
+        _cfg.WindowLeft = left;
+        _cfg.WindowTop = top;
         App.SaveConfig();
+        Log.Write($"save(now) -> ({left},{top})");
+    }
+
+    /// <summary>用 Win32 直接摆窗口，绕开 WPF 的布局干预。</summary>
+    private void ForcePosition(double left, double top, string tag)
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+
+        double scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        int x = (int)Math.Round(left * scale);
+        int y = (int)Math.Round(top * scale);
+
+        NativeMethods.SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0,
+            NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+
+        Log.Write($"force({tag}) -> ({left},{top}) 物理({x},{y})");
+    }
+
+    /// <summary>读窗口的真实物理位置，换算回 DIP。</summary>
+    private (double left, double top) CurrentPosition()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+
+        if (hwnd != IntPtr.Zero && NativeMethods.GetWindowRect(hwnd, out var r))
+        {
+            double scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+            if (scale > 0.1) return (r.Left / scale, r.Top / scale);
+        }
+
+        return (Left, Top);
     }
 
     private void SavePosition()
     {
+        // 启动后一小段时间内窗口位置还会被布局调整，这时候的坐标不可信，先别存
+        if (DateTime.Now < _ignoreSaveUntil)
+        {
+            Log.Write($"save skipped (启动冷却中) Left={Left} Top={Top}");
+            return;
+        }
+
+        Log.Write($"save: ready={_ready} Left={Left} Top={Top}");
         if (!_ready) return;
         if (double.IsNaN(Left) || double.IsNaN(Top)) return;
         _cfg.WindowLeft = Left;
@@ -833,6 +913,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        Log.Write($"closing, save ({Left},{Top})");
         SavePositionNow();   // 退出前最后记一次位置，防止拖完马上就关
         base.OnClosing(e);
     }
@@ -917,6 +998,7 @@ public partial class MainWindow : Window
     {
         base.OnMouseLeftButtonDown(e);
         _dragStart = e.GetPosition(this);
+        Log.Write($"mouse down at ({_dragStart.X:F0},{_dragStart.Y:F0}) lock={_cfg.LockPosition}");
         _pressed = true;
         _dragging = false;
         try { CaptureMouse(); } catch { }
@@ -933,6 +1015,7 @@ public partial class MainWindow : Window
         {
             _dragging = true;
             _pressed = false;
+            Log.Write($"drag start, delta=({Math.Abs(p.X - _dragStart.X):F0},{Math.Abs(p.Y - _dragStart.Y):F0})");
             if (IsMouseCaptured) ReleaseMouseCapture();
 
             if (_cfg.LockPosition)
@@ -942,7 +1025,8 @@ public partial class MainWindow : Window
                 return;
             }
 
-            try { DragMove(); } catch { }
+            try { DragMove(); Log.Write($"drag done -> ({Left},{Top})"); }
+            catch (Exception ex) { Log.Write("drag failed: " + ex.Message); }
             SavePosition();
         }
     }
