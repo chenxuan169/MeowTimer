@@ -1,0 +1,54 @@
+name: Build macOS app
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish (Apple Silicon)
+        run: |
+          dotnet publish MeowTimer.Mac/MeowTimer.Mac.csproj \
+            -c Release -r osx-arm64 --self-contained true \
+            -p:PublishSingleFile=true -p:DebugType=none \
+            -o build/arm64
+
+      - name: Publish (Intel)
+        run: |
+          dotnet publish MeowTimer.Mac/MeowTimer.Mac.csproj \
+            -c Release -r osx-x64 --self-contained true \
+            -p:PublishSingleFile=true -p:DebugType=none \
+            -o build/x64
+
+      - name: Package .app
+        run: |
+          chmod +x scripts/make-app.sh
+          VERSION="${GITHUB_REF_NAME#v}"
+          ./scripts/make-app.sh "${VERSION:-1.5.3}"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: meowtimer-macos
+          path: build/MeowTimer-*.zip
+          retention-days: 30
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/MeowTimer-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

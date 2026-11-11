@@ -1,0 +1,103 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MeowTimerMac.Views.SettingsWindow"
+        Title="喵时 · 设置"
+        Width="452" Height="580"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+  <Grid RowDefinitions="*,Auto">
+    <ScrollViewer>
+      <StackPanel Margin="22,18,22,6" Spacing="10">
+
+        <TextBlock Text="外观" FontSize="11" FontWeight="SemiBold" Opacity="0.55" Margin="0,4,0,0" />
+
+        <Grid ColumnDefinitions="112,*">
+          <TextBlock Grid.Column="0" Text="配色主题" VerticalAlignment="Center" FontSize="12.5" />
+          <ComboBox x:Name="ThemeBox" Grid.Column="1" ItemsSource="{Binding Themes}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </Grid>
+
+        <Grid ColumnDefinitions="112,*">
+          <TextBlock Grid.Column="0" Text="背景样式" VerticalAlignment="Center" FontSize="12.5" />
+          <ComboBox x:Name="BgBox" Grid.Column="1" SelectedIndex="0" SelectionChanged="OnBgChanged">
+            <ComboBoxItem Content="渐变（随主题）" />
+            <ComboBoxItem Content="纯色" />
+            <ComboBoxItem Content="无背景（只留数字）" />
+          </ComboBox>
+        </Grid>
+
+        <Grid ColumnDefinitions="112,*,46">
+          <TextBlock Grid.Column="0" Text="不透明度" VerticalAlignment="Center" FontSize="12.5" />
+          <Slider x:Name="OpacitySlider" Grid.Column="1" Minimum="0" Maximum="100" Value="62" />
+          <TextBlock x:Name="OpacityLabel" Grid.Column="2" Text="62%" VerticalAlignment="Center"
+                     HorizontalAlignment="Right" FontSize="12" Opacity="0.6" />
+        </Grid>
+
+        <Grid ColumnDefinitions="112,*">
+          <TextBlock Grid.Column="0" Text="文字颜色" VerticalAlignment="Center" FontSize="12.5" />
+          <ComboBox x:Name="TextColorBox" Grid.Column="1" ItemsSource="{Binding TextColors}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <Border Width="12" Height="12" CornerRadius="6" Background="{Binding Swatch}" />
+                  <TextBlock Text="{Binding Name}" />
+                </StackPanel>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </Grid>
+
+        <Grid ColumnDefinitions="112,120">
+          <TextBlock Grid.Column="0" Text="字号" VerticalAlignment="Center" FontSize="12.5" />
+          <NumericUpDown x:Name="FontSizeBox" Grid.Column="1" Minimum="18" Maximum="130" Increment="2"
+                         FormatString="0" HorizontalAlignment="Left" Width="110" />
+        </Grid>
+
+        <TextBlock Text="计时" FontSize="11" FontWeight="SemiBold" Opacity="0.55" Margin="0,10,0,0" />
+
+        <Grid ColumnDefinitions="112,Auto,Auto,Auto,Auto,Auto,Auto">
+          <TextBlock Grid.Column="0" Text="默认倒计时" VerticalAlignment="Center" FontSize="12.5" />
+          <NumericUpDown x:Name="DefHour" Grid.Column="1" Minimum="0" Maximum="99" FormatString="0" Width="66" />
+          <TextBlock Grid.Column="2" Text="时" VerticalAlignment="Center" Margin="6,0,10,0" FontSize="11.5" Opacity="0.6" />
+          <NumericUpDown x:Name="DefMin" Grid.Column="3" Minimum="0" Maximum="59" FormatString="0" Width="66" />
+          <TextBlock Grid.Column="4" Text="分" VerticalAlignment="Center" Margin="6,0,10,0" FontSize="11.5" Opacity="0.6" />
+          <NumericUpDown x:Name="DefSec" Grid.Column="5" Minimum="0" Maximum="59" FormatString="0" Width="66" />
+          <TextBlock Grid.Column="6" Text="秒" VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11.5" Opacity="0.6" />
+        </Grid>
+
+        <TextBlock Text="提醒" FontSize="11" FontWeight="SemiBold" Opacity="0.55" Margin="0,10,0,0" />
+
+        <CheckBox x:Name="SoundCheck" Content="开启提示音" FontSize="12.5" />
+
+        <Grid ColumnDefinitions="112,*,Auto">
+          <TextBlock Grid.Column="0" Text="结束音效" VerticalAlignment="Center" FontSize="12.5" />
+          <ComboBox x:Name="SoundBox" Grid.Column="1" ItemsSource="{Binding Sounds}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <Button Grid.Column="2" Classes="ghost" Content="▶" Margin="6,0,0,0" Click="OnPreviewSound" />
+        </Grid>
+
+        <CheckBox x:Name="TopmostCheck" Content="窗口置顶" FontSize="12.5" />
+        <CheckBox x:Name="LockCheck" Content="锁定窗口位置（拖不动）" FontSize="12.5" />
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="1" Padding="22,10,22,16">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Classes="ghost" Content="取消" Click="OnCancel" />
+        <Button Classes="primary" Content="保存" Click="OnSave" IsDefault="True" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

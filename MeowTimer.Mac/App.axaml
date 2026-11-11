@@ -1,0 +1,44 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MeowTimerMac.App"
+             RequestedThemeVariant="Light">
+
+  <Application.Styles>
+    <FluentTheme />
+
+    <!-- 圆角小按钮 -->
+    <Style Selector="Button.pill">
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Background" Value="#22FF6F9C" />
+      <Setter Property="Foreground" Value="#7A4B5E" />
+    </Style>
+
+    <Style Selector="Button.primary">
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="16,8" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Background" Value="#FF6F9C" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <Style Selector="Button.ghost">
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="#9A8794" />
+    </Style>
+
+    <Style Selector="ComboBox">
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+
+  </Application.Styles>
+</Application>

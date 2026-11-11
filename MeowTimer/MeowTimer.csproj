@@ -10,8 +10,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>MeowTimer</AssemblyName>
     <RootNamespace>MeowTimer</RootNamespace>
-    <Version>1.5.3</Version>
-    <FileVersion>1.5.3.0</FileVersion>
+    <Version>1.6.0</Version>
+    <FileVersion>1.6.0.0</FileVersion>
     <AssemblyVersion>1.1.0.0</AssemblyVersion>
     <Product>喵时 MeowTimer</Product>
     <AssemblyTitle>喵时 MeowTimer</AssemblyTitle>

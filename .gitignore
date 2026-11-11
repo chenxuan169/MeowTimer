@@ -16,3 +16,8 @@ desktop.ini
 
 # 工作区私有记录
 .workbuddy/
+
+# macOS 构建产物
+MeowTimer.Mac/publish/
+MeowTimer.Mac/build/
+build/

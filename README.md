@@ -1,13 +1,25 @@
 # 喵时 MeowTimer 🐱
 
-![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-0078D4)
 ![.NET](https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet)
 ![License](https://img.shields.io/badge/license-MIT-3DA639)
-![Size](https://img.shields.io/badge/size-380%20KB-FF8FB1)
 
-一个很轻的 Windows 桌面倒计时 / 番茄钟。没有窗口边框，可以拖到屏幕任意角落，平时就安安静静趴着显示时间。
+一个很轻的桌面倒计时 / 番茄钟。没有窗口边框，可以拖到屏幕任意角落，平时就安安静静趴着显示时间。
 
-双击不用找图标，点击数字就能开始。
+点击数字就能开始，不用去找图标。
+
+## 两个平台
+
+| 平台 | 技术 | 功能完整度 |
+| --- | --- | --- |
+| **Windows** | WPF | 完整（倒计时 / 时钟 / 番茄钟 / 专注循环 / 热键 / 托盘 / 统计） |
+| **macOS** | Avalonia | 核心（倒计时 / 主题 / 音效 / 悬浮窗） |
+
+macOS 版是独立实现，两者共用配置格式和计时逻辑，但界面代码不通用。macOS 版目前还没有：番茄钟与专注循环、全局热键、托盘常驻、完成统计。
+
+macOS 版长这样（和 Windows 版几乎一致）：
+
+<img src="dist/ui-mac.png" width="300" />
 
 <p align="center">
   <img src="dist/ui-main.png" width="420" alt="主界面" />
@@ -58,9 +70,28 @@
 
 ## 下载
 
+### Windows
+
 **[⬇ 下载 MeowTimer.exe](https://github.com/chenxuan169/MeowTimer/releases/latest/download/MeowTimer.exe)** — 约 380 KB，双击就能用
 
 需要 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)（大多数电脑已经装了）。
+
+### macOS
+
+在 [Releases](https://github.com/chenxuan169/MeowTimer/releases) 里按芯片选：
+
+| 你的 Mac | 下载 |
+| --- | --- |
+| Apple Silicon（M1 / M2 / M3 / M4） | `MeowTimer-arm64.zip` |
+| Intel 芯片 | `MeowTimer-x64.zip` |
+
+解压后把 `MeowTimer.app` 拖进「应用程序」文件夹即可，**不需要装 .NET**（运行时已打包进去）。
+
+> 应用没有 Apple 开发者签名，首次打开会提示「无法验证开发者」。
+> 解决办法：在访达里**右键**点 MeowTimer.app → 选「打开」→ 再点一次「打开」。
+> 或者在终端执行：`xattr -dr com.apple.quarantine /Applications/MeowTimer.app`
+
+macOS 包由 GitHub Actions 在真 Mac 上自动构建（见 `.github/workflows/mac-build.yml`），保证可执行权限和芯片架构正确。
 
 详细说明见 [使用说明.md](dist/使用说明.md)。
 
@@ -83,35 +114,61 @@
 
 需要 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)。
 
+**Windows 版**
+
 ```bash
 cd MeowTimer
 
-# 调试运行
-dotnet run
+dotnet run                       # 调试运行
 
-# 打包单文件
 dotnet publish -c Release -r win-x64 --self-contained false ^
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
   -p:DebugType=none -o ../dist
 ```
 
+**macOS 版**
+
+```bash
+cd MeowTimer.Mac
+
+dotnet run                       # 在任意平台都能预览界面
+
+# Apple Silicon
+dotnet publish -c Release -r osx-arm64 --self-contained true -p:PublishSingleFile=true -o build/arm64
+
+# Intel
+dotnet publish -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true -o build/x64
+
+./scripts/make-app.sh 1.5.3      # 打成 .app + zip
+```
+
 ## 技术栈
 
-纯 .NET 8 + WPF，**零第三方依赖**。
+**Windows**：纯 .NET 8 + WPF，零第三方依赖。
+**macOS**：.NET 8 + [Avalonia 11](https://avaloniaui.net/)，跨平台 XAML。
 
-- 音效用代码实时合成波形（正弦波 + 包络），所以整个程序只有一个 exe
-- 界面全部是 XAML 手写模板，配色由主题对象驱动
-- 数据存在 `%LOCALAPPDATA%\MeowTimer\`，纯本地，不联网
+两边共用：
+
+- 音效用代码实时合成波形（正弦波 + 包络），不占体积
+- 配置文件格式一致（`%LOCALAPPDATA%\MeowTimer\` / `~/.local/share/MeowTimer/`）
+- 计时与时长解析逻辑同源（`MeowTimer/Models`、`Services/ConfigService.cs` 等文件被 Mac 项目直接引用）
 
 ## 目录
 
 ```
-MeowTimer/
-├── Models/       数据模型（配置、主题、统计）
-├── Services/     配置、音效合成、主题、本地化、热键
-├── Views/        设置、统计、输入等子窗口
-├── Assets/       图标
-└── MainWindow.xaml[.cs]   主窗口
+MeowTimer/            Windows 版（WPF）
+├── Models/           数据模型（配置、主题、统计）
+├── Services/         配置、音效合成、主题、本地化、热键
+├── Views/            设置、统计、输入等子窗口
+└── MainWindow.xaml   主窗口
+
+MeowTimer.Mac/        macOS 版（Avalonia）
+├── Services/         主题、音效播放（afplay）
+├── Views/            主窗口、设置、计时输入
+└── （Models 与 ConfigService 直接从 Windows 版引用）
+
+scripts/make-app.sh   打包 .app 的脚本
+.github/workflows/    macOS 自动构建
 ```
 
 ## License

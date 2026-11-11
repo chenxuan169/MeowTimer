@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MeowTimerMac.Views.SetTimerWindow"
+        Title="设置倒计时"
+        Width="330" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+  <StackPanel Margin="22,18" Spacing="14">
+    <TextBlock Text="要专注多久？" FontSize="15" FontWeight="SemiBold" />
+
+    <Grid ColumnDefinitions="*,10,*,10,*">
+      <StackPanel Grid.Column="0" Spacing="5">
+        <NumericUpDown x:Name="HourBox" Minimum="0" Maximum="99" Value="0" Increment="1" FormatString="0" />
+        <TextBlock Text="时" FontSize="11" HorizontalAlignment="Center" Opacity="0.6" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Spacing="5">
+        <NumericUpDown x:Name="MinBox" Minimum="0" Maximum="59" Value="25" Increment="1" FormatString="0" />
+        <TextBlock Text="分" FontSize="11" HorizontalAlignment="Center" Opacity="0.6" />
+      </StackPanel>
+      <StackPanel Grid.Column="4" Spacing="5">
+        <NumericUpDown x:Name="SecBox" Minimum="0" Maximum="59" Value="0" Increment="1" FormatString="0" />
+        <TextBlock Text="秒" FontSize="11" HorizontalAlignment="Center" Opacity="0.6" />
+      </StackPanel>
+    </Grid>
+
+    <StackPanel Orientation="Horizontal" Spacing="6">
+      <Button Classes="pill" Content="5 分" Tag="300" Click="OnPreset" />
+      <Button Classes="pill" Content="15 分" Tag="900" Click="OnPreset" />
+      <Button Classes="pill" Content="25 分" Tag="1500" Click="OnPreset" />
+      <Button Classes="pill" Content="45 分" Tag="2700" Click="OnPreset" />
+      <Button Classes="pill" Content="1 时" Tag="3600" Click="OnPreset" />
+    </StackPanel>
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Classes="ghost" Content="取消" Click="OnCancel" />
+      <Button Classes="primary" Content="开始" Click="OnOk" IsDefault="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

@@ -1,0 +1,43 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MeowTimerMac.Views.MainWindow"
+        Title="喵时"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        CanResize="False"
+        ShowInTaskbar="False"
+        Topmost="True"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual">
+
+  <Grid Margin="14">
+    <Border x:Name="Card" CornerRadius="26" Padding="17,12,21,14"
+            BoxShadow="0 7 24 0 #38B34768">
+
+      <StackPanel Orientation="Horizontal">
+        <Viewbox x:Name="CatBox" Width="46" Height="46" Margin="0,1,12,0" VerticalAlignment="Center">
+          <Canvas Width="64" Height="66">
+            <Path Fill="#FFFFFFFF" Data="M 13,27 L 18,7 L 32,20 Z" />
+            <Path Fill="#FFFFFFFF" Data="M 51,27 L 46,7 L 32,20 Z" />
+            <Ellipse Canvas.Left="10" Canvas.Top="19" Width="44" Height="38" Fill="#FFFFFFFF" />
+            <Ellipse x:Name="CheekLeft" Canvas.Left="15" Canvas.Top="41" Width="9" Height="5.5" Fill="#40FF9EC0" />
+            <Ellipse x:Name="CheekRight" Canvas.Left="40" Canvas.Top="41" Width="9" Height="5.5" Fill="#40FF9EC0" />
+            <Ellipse x:Name="EyeLeft" Canvas.Left="21.5" Canvas.Top="30" Width="5.5" Height="8" Fill="#FF5C4A56" />
+            <Ellipse x:Name="EyeRight" Canvas.Left="37" Canvas.Top="30" Width="5.5" Height="8" Fill="#FF5C4A56" />
+            <Path Fill="#FFFF9EC0" Data="M 29.6,40 L 34.4,40 L 32,42.8 Z" />
+          </Canvas>
+        </Viewbox>
+
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock x:Name="TimeText" Text="25:00" FontSize="46" FontWeight="Bold" />
+          <Border x:Name="BarBg" Height="3" CornerRadius="1.5" Margin="1,5,0,0" MinWidth="72" Background="#33FFFFFF">
+            <Border x:Name="BarFill" Height="3" CornerRadius="1.5" HorizontalAlignment="Left" Width="0" Background="#FFFFFFFF" />
+          </Border>
+          <TextBlock x:Name="StatusText" Text="点一下开始" FontSize="11" Margin="1,4,0,0" />
+        </StackPanel>
+      </StackPanel>
+
+    </Border>
+  </Grid>
+</Window>

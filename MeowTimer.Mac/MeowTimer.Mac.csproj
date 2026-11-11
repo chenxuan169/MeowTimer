@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MeowTimerMac</RootNamespace>
+    <AssemblyName>MeowTimer</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <Version>1.6.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+  </ItemGroup>
+
+  <!-- 直接复用 Windows 版里与平台无关的逻辑 -->
+  <ItemGroup>
+    <Compile Include="../MeowTimer/Models/AppConfig.cs" Link="Shared/AppConfig.cs" />
+    <Compile Include="../MeowTimer/Models/TimerTypes.cs" Link="Shared/TimerTypes.cs" />
+    <Compile Include="../MeowTimer/Services/ConfigService.cs" Link="Shared/ConfigService.cs" />
+    <Compile Include="../MeowTimer/Services/DurationParser.cs" Link="Shared/DurationParser.cs" />
+    <Compile Include="../MeowTimer/Services/Localization.cs" Link="Shared/Localization.cs" />
+    <Compile Include="../MeowTimer/Services/StatsService.cs" Link="Shared/StatsService.cs" />
+  </ItemGroup>
+
+</Project>
