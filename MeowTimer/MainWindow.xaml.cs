@@ -290,6 +290,14 @@ public partial class MainWindow : Window
         Left = left;
         Top = top;
         _suppressPosSave = false;
+
+        // 回写到配置里：这样即使一次都没拖过，配置里也是有效坐标而不是 NaN，
+        // 下次启动就还能回到同一个位置
+        _cfg.WindowLeft = left;
+        _cfg.WindowTop = top;
+
+        if (double.IsNaN(_cfg.WindowLeft) == false)
+            App.SaveConfig();
     }
 
     /// <summary>把窗口挪到当前屏幕中央（万一跑到别的显示器上了）。</summary>

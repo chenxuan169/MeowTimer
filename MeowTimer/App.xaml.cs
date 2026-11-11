@@ -397,7 +397,25 @@ public partial class App : Application
         }
     }
 
-    public static void SaveConfig() => ConfigService.Save(Config);
+    public static void SaveConfig()
+    {
+        // 位置是 NaN 说明还没定位过，别把磁盘上的有效坐标冲掉
+        if (double.IsNaN(Config.WindowLeft) || double.IsNaN(Config.WindowTop))
+        {
+            try
+            {
+                var disk = ConfigService.Load();
+                if (!double.IsNaN(disk.WindowLeft) && !double.IsNaN(disk.WindowTop))
+                {
+                    Config.WindowLeft = disk.WindowLeft;
+                    Config.WindowTop = disk.WindowTop;
+                }
+            }
+            catch { }
+        }
+
+        ConfigService.Save(Config);
+    }
 
     public static void ReloadHotkeys() => Hotkeys?.RegisterAll(Config);
 
