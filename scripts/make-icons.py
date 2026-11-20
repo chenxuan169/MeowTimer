@@ -117,7 +117,7 @@ def write_png(path, size, raw):
 
 
 if __name__ == "__main__":
-    base = "E:/WorkBuddy/2026-11-10-10-44-32/web"
+    base = "E:/WorkBuddy/2026-11-10-10-44-32/docs"
     for size in (180, 192, 512):
         write_png(f"{base}/icon-{size}.png", size, render(size))
         print(f"生成 icon-{size}.png")
