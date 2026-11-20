@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#F9558B" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="喵时" />
+<title>喵时 MeowTimer</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<style>
+  :root {
+    --from: #F9558B;
+    --to: #FF9EC0;
+    --text: #FFFFFF;
+    --sub: rgba(255, 255, 255, .72);
+    --track: rgba(255, 255, 255, .26);
+    --btn: rgba(255, 255, 255, .18);
+    --btn-hover: rgba(255, 255, 255, .28);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--from);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    color: var(--text);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+
+  .screen {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    width: 100%;
+    background: linear-gradient(150deg, var(--from), var(--to));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    transition: background .4s;
+  }
+
+  .stage {
+    flex: 1;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4vh;
+    padding: 5vh 26px 0;
+    box-sizing: border-box;
+  }
+
+  .cat { width: 16vw; max-width: 84px; min-width: 54px; opacity: .95; }
+
+  .time {
+    font-size: 120px;          /* 实际字号由 JS 按容器宽度算，避免溢出 */
+    font-weight: 700;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .status {
+    font-size: 15px;
+    color: var(--sub);
+    letter-spacing: .02em;
+    min-height: 20px;
+    text-align: center;
+  }
+
+  .bar {
+    width: min(76%, 420px);
+    max-width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--track);
+    overflow: hidden;
+  }
+
+  .bar i {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: var(--text);
+    border-radius: 2px;
+    transition: width .25s linear;
+  }
+
+  .controls {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0 22px calc(env(safe-area-inset-bottom) + 32px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+
+  button {
+    font: inherit;
+    color: var(--text);
+    background: var(--btn);
+    border: 0;
+    border-radius: 18px;
+    padding: 15px 22px;
+    font-size: 16px;
+    font-weight: 600;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: background .15s, transform .1s;
+    cursor: pointer;
+  }
+
+  button:active { transform: scale(.96); background: var(--btn-hover); }
+
+  button.primary {
+    flex: 1;
+    max-width: 220px;
+    background: rgba(255, 255, 255, .92);
+    color: var(--from);
+    font-size: 17px;
+  }
+
+  button.primary:active { background: #fff; }
+
+  button.mini {
+    padding: 15px 18px;
+    font-size: 15px;
+    min-width: 62px;
+  }
+
+  .modes {
+    display: flex;
+    gap: 8px;
+    padding: 0 22px 14px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .modes button {
+    padding: 9px 16px;
+    font-size: 13px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .14);
+  }
+
+  .modes button.on {
+    background: rgba(255, 255, 255, .34);
+    font-weight: 700;
+  }
+
+  /* 横向时压缩 */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .stage { gap: 2vh; padding-top: 3vh; }
+    .cat { width: 10vw; }
+    .time { font-size: clamp(48px, 16vw, 110px); }
+  }
+</style>
+</head>
+<body>
+<div class="screen" id="screen">
+  <div class="stage">
+    <svg class="cat" id="cat" viewBox="0 0 64 66" aria-hidden="true">
+      <path d="M13 27 L18 7 L32 20 Z" fill="currentColor"/>
+      <path d="M51 27 L46 7 L32 20 Z" fill="currentColor"/>
+      <ellipse cx="32" cy="38" rx="22" ry="19" fill="currentColor"/>
+      <ellipse cx="19.5" cy="43.5" rx="4.5" ry="2.8" fill="#FF9EC0" opacity=".55"/>
+      <ellipse cx="44.5" cy="43.5" rx="4.5" ry="2.8" fill="#FF9EC0" opacity=".55"/>
+      <ellipse cx="24.3" cy="34" rx="2.8" ry="4" fill="#5C4A56"/>
+      <ellipse cx="39.7" cy="34" rx="2.8" ry="4" fill="#5C4A56"/>
+      <path d="M29.6 40 L34.4 40 L32 42.8 Z" fill="#FF9EC0"/>
+    </svg>
+
+    <div class="time" id="time">25:00</div>
+    <div class="status" id="status">点一下开始</div>
+    <div class="bar"><i id="fill"></i></div>
+  </div>
+
+  <div class="modes">
+    <button data-mode="countdown" class="on">倒计时</button>
+    <button data-mode="pomodoro">番茄钟</button>
+    <button data-mode="clock">时钟</button>
+  </div>
+
+  <div class="controls">
+    <button class="mini" id="minus">−1′</button>
+    <button class="primary" id="toggle">开始</button>
+    <button class="mini" id="plus">+1′</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const timeEl = $('time'), statusEl = $('status'), fillEl = $('fill');
+  const toggleBtn = $('toggle'), screen = $('screen'), catEl = $('cat');
+
+  const THEMES = {
+    sakura: ['#F9558B', '#FF9EC0'],
+    cream:  ['#FFD79A', '#FFB07C'],
+    mint:   ['#6FD6B8', '#A8E8D8'],
+    night:  ['#2B2A4A', '#4A3D7A'],
+    sunset: ['#FF7E5F', '#FFB88C'],
+    mono:   ['#1C1C1E', '#3A3A3C'],
+  };
+
+  const POMO = { work: 1500, short: 300, long: 900 };
+
+  const state = {
+    mode: 'countdown',
+    phase: 'idle',          // idle | running | paused | done
+    total: 1500,
+    remain: 1500,
+    endAt: 0,               // 结束时间戳（关键：用绝对时间，后台回来也准）
+    pomoPhase: 'work',
+    pomoDone: 0,
+    theme: 'sakura',
+  };
+
+  // ---------- 存储 ----------
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem('meowtimer') || '{}');
+      if (s.theme && THEMES[s.theme]) state.theme = s.theme;
+      if (s.mode) state.mode = s.mode;
+      if (Number.isFinite(s.total) && s.total > 0) { state.total = s.total; state.remain = s.total; }
+      if (Number.isFinite(s.endAt) && s.endAt > Date.now()) {
+        // 关掉页面时还在跑，回来继续
+        state.endAt = s.endAt;
+        state.phase = 'running';
+      }
+    } catch {}
+  }
+
+  function save() {
+    localStorage.setItem('meowtimer', JSON.stringify({
+      theme: state.theme, mode: state.mode, total: state.total,
+      endAt: state.phase === 'running' ? state.endAt : 0,
+    }));
+  }
+
+  // ---------- 渲染 ----------
+  function fmt(sec) {
+    sec = Math.max(0, Math.round(sec));
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+                 : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function statusText() {
+    if (state.mode === 'clock') return new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+    if (state.mode === 'pomodoro') {
+      const name = state.pomoPhase === 'work' ? `专注 #${state.pomoDone + 1}`
+                 : state.pomoPhase === 'short' ? '短休息' : '长休息';
+      return state.phase === 'running' ? `${name} · 点一下暂停`
+           : state.phase === 'paused' ? `${name} · 已暂停`
+           : `${name} · 点一下开始`;
+    }
+    return state.phase === 'running' ? '专注中 · 点一下暂停'
+         : state.phase === 'paused' ? '已暂停 · 点一下继续'
+         : state.phase === 'done' ? '时间到啦 🎉'
+         : '点一下开始';
+  }
+
+  function fitTime() {
+    const vw = document.documentElement.clientWidth || window.innerWidth;
+    const avail = Math.max(160, vw - 56);          // 左右各留 28px
+    const len = timeEl.textContent.length;
+    const size = Math.min(150, Math.floor(avail / (len * 0.58)));
+    timeEl.style.fontSize = Math.max(40, size) + 'px';
+  }
+
+  function render() {
+    timeEl.textContent = fmt(state.remain);
+    statusEl.textContent = statusText();
+
+    const ratio = state.total > 0 ? state.remain / state.total : 0;
+    fillEl.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
+
+    toggleBtn.textContent = state.phase === 'running' ? '暂停'
+                          : state.phase === 'paused' ? '继续'
+                          : state.phase === 'done' ? '再来一次' : '开始';
+
+    const [from, to] = THEMES[state.theme];
+    document.documentElement.style.setProperty('--from', from);
+    document.documentElement.style.setProperty('--to', to);
+    document.querySelector('meta[name=theme-color]').setAttribute('content', from);
+
+    document.querySelectorAll('.modes button').forEach(b =>
+      b.classList.toggle('on', b.dataset.mode === state.mode));
+
+    document.title = state.phase === 'running' ? `${fmt(state.remain)} · 喵时` : '喵时 MeowTimer';
+
+    fitTime();
+  }
+
+  // ---------- 声音 ----------
+  let audioCtx = null;
+  function beep(pattern) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      pattern.forEach(([freq, start, dur]) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        const t0 = now + start;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.28, t0 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        osc.start(t0); osc.stop(t0 + dur + 0.02);
+      });
+    } catch {}
+  }
+
+  const SOUND_FINISH = [[880, 0, 0.35], [1174, 0.18, 0.5]];
+  const SOUND_BREAK = [[660, 0, 0.3], [523, 0.2, 0.45]];
+
+  function buzz() {
+    if (navigator.vibrate) navigator.vibrate([220, 90, 220]);
+  }
+
+  // ---------- 计时 ----------
+  let timer = null;
+
+  function startLoop() {
+    clearInterval(timer);
+    timer = setInterval(tick, 200);
+    tick();
+  }
+
+  function tick() {
+    if (state.mode === 'clock') {
+      timeEl.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      render();  // 保持状态文字
+      return;
+    }
+
+    if (state.phase !== 'running') { render(); return; }
+
+    const left = Math.max(0, Math.round((state.endAt - Date.now()) / 1000));
+    state.remain = left;
+
+    if (left <= 0) { finish(); return; }
+    render();
+  }
+
+  function finish() {
+    clearInterval(timer);
+    state.remain = 0;
+    state.phase = 'done';
+
+    if (state.mode === 'pomodoro') {
+      if (state.pomoPhase === 'work') {
+        state.pomoDone++;
+        beep(SOUND_FINISH); buzz();
+        const long = state.pomoDone % 4 === 0;
+        state.pomoPhase = long ? 'long' : 'short';
+        state.total = POMO[long ? 'long' : 'short'];
+      } else {
+        beep(SOUND_BREAK); buzz();
+        state.pomoPhase = 'work';
+        state.total = POMO.work;
+      }
+      state.remain = state.total;
+      state.phase = 'idle';
+    } else {
+      beep(SOUND_FINISH); buzz();
+    }
+
+    save();
+    render();
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try { new Notification('喵时', { body: '时间到啦 🎉', tag: 'meowtimer' }); } catch {}
+    }
+  }
+
+  function toggle() {
+    // 首次交互解锁音频（iOS 要求）
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {} }
+
+    if (state.mode === 'clock') return;
+
+    if (state.phase === 'running') {
+      state.phase = 'paused';
+      state.remain = Math.max(0, Math.round((state.endAt - Date.now()) / 1000));
+      clearInterval(timer);
+    } else {
+      if (state.phase === 'done') state.remain = state.total;
+      state.endAt = Date.now() + state.remain * 1000;
+      state.phase = 'running';
+      startLoop();
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+
+    save();
+    render();
+  }
+
+  function adjust(delta) {
+    if (state.phase === 'running' || state.mode === 'clock') return;
+    state.total = Math.max(60, state.total + delta);
+    state.remain = state.total;
+    state.phase = 'idle';
+    save();
+    render();
+  }
+
+  function setMode(mode) {
+    clearInterval(timer);
+    state.mode = mode;
+    state.phase = 'idle';
+    state.pomoDone = 0;
+    state.pomoPhase = 'work';
+
+    if (mode === 'pomodoro') { state.total = POMO.work; }
+    else if (mode === 'countdown') { state.total = Number(localStorage.getItem('meow-last') || 1500); }
+    else { state.total = 0; }
+
+    state.remain = state.total;
+    startLoop();
+    save();
+    render();
+  }
+
+  // ---------- 事件 ----------
+  timeEl.addEventListener('click', toggle);
+  toggleBtn.addEventListener('click', toggle);
+  $('plus').addEventListener('click', () => adjust(60));
+  $('minus').addEventListener('click', () => adjust(-60));
+
+  document.querySelectorAll('.modes button').forEach(btn =>
+    btn.addEventListener('click', () => setMode(btn.dataset.mode)));
+
+  // 上下滑动调时间
+  let touchY = null;
+  screen.addEventListener('touchstart', (e) => {
+    if (state.phase === 'running') return;
+    touchY = e.touches[0].clientY;
+  }, { passive: true });
+
+  screen.addEventListener('touchend', (e) => {
+    if (touchY === null) return;
+    const dy = e.changedTouches[0].clientY - touchY;
+    touchY = null;
+    if (Math.abs(dy) < 60) return;
+    adjust(dy < 0 ? 60 : -60);   // 上滑加一分钟
+  }, { passive: true });
+
+  // 回到前台立即校准
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) tick();
+  });
+
+  window.addEventListener('resize', () => { render(); });
+  window.addEventListener('orientationchange', () => setTimeout(render, 200));
+
+  // 点两下切主题（调试用，也可长按）
+  let tapCount = 0, tapTimer = null;
+  catEl.addEventListener('click', () => {
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { tapCount = 0; }, 600);
+    if (tapCount >= 3) {
+      tapCount = 0;
+      const keys = Object.keys(THEMES);
+      state.theme = keys[(keys.indexOf(state.theme) + 1) % keys.length];
+      save(); render();
+    }
+  });
+
+  // ---------- 启动 ----------
+  load();
+  if (state.mode === 'countdown') state.total = state.total || 1500;
+  state.remain = state.phase === 'running'
+    ? Math.max(0, Math.round((state.endAt - Date.now()) / 1000))
+    : (state.total || 1500);
+  if (state.phase === 'running') startLoop(); else render();
+  render();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>
